@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session_record.schema.json",
+  "title": "SessionRecord",
+  "type": "object",
+  "required": ["session_id", "timestamp", "source", "messages"],
+  "properties": {
+    "session_id": {"type": "string"},
+    "timestamp": {"type": "string"},
+    "source": {"type": "string"},
+    "channel": {"type": "string"},
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role", "text"],
+        "properties": {
+          "role": {"type": "string"},
+          "text": {"type": "string"},
+          "timestamp": {"type": "string"}
+        }
+      }
+    },
+    "metadata": {"type": "object"}
+  }
+}

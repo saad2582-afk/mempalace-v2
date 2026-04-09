@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "episodic_memory.schema.json",
+  "title": "EpisodicMemory",
+  "type": "object",
+  "required": ["id", "session_id", "timestamp", "summary", "topics", "evidence"],
+  "properties": {
+    "id": {"type": "string"},
+    "session_id": {"type": "string"},
+    "timestamp": {"type": "string"},
+    "summary": {"type": "string"},
+    "topics": {"type": "array", "items": {"type": "string"}},
+    "events": {"type": "array", "items": {"type": "string"}},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "confidence": {"type": "number"}
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "invalidation_record.schema.json",
+  "title": "InvalidationRecord",
+  "type": "object",
+  "required": ["id", "old_memory_id", "new_memory_id", "reason", "timestamp"],
+  "properties": {
+    "id": {"type": "string"},
+    "old_memory_id": {"type": "string"},
+    "new_memory_id": {"type": "string"},
+    "reason": {"type": "string"},
+    "timestamp": {"type": "string"}
+  }
+}

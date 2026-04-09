@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task_memory.schema.json",
+  "title": "TaskMemory",
+  "type": "object",
+  "required": ["id", "title", "status", "timestamp", "source_session"],
+  "properties": {
+    "id": {"type": "string"},
+    "title": {"type": "string"},
+    "details": {"type": "string"},
+    "status": {"type": "string", "enum": ["open", "in_progress", "done", "blocked", "cancelled"]},
+    "priority": {"type": "string"},
+    "timestamp": {"type": "string"},
+    "source_session": {"type": "string"},
+    "source_excerpt": {"type": "string"}
+  }
+}

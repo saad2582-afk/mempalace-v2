@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semantic_memory.schema.json",
+  "title": "SemanticMemory",
+  "type": "object",
+  "required": ["id", "memory_type", "subject", "value", "timestamp", "source_session", "confidence", "status"],
+  "properties": {
+    "id": {"type": "string"},
+    "memory_type": {"type": "string"},
+    "subject": {"type": "string"},
+    "predicate": {"type": "string"},
+    "value": {"type": "string"},
+    "timestamp": {"type": "string"},
+    "valid_from": {"type": "string"},
+    "valid_to": {"type": ["string", "null"]},
+    "source_session": {"type": "string"},
+    "source_excerpt": {"type": "string"},
+    "confidence": {"type": "number"},
+    "status": {"type": "string", "enum": ["active", "superseded", "uncertain", "invalidated"]}
+  }
+}
