@@ -8,6 +8,7 @@ import sqlite3
 from mempalace_v2.consolidation.pipeline import MemoryPipeline
 from mempalace_v2.ingestion.memory_files import ingest_workspace_memory
 from mempalace_v2.ingestion.openclaw_sessions import load_session
+from mempalace_v2.integration.hook_runner import HookRunner, load_payload
 from mempalace_v2.integration.openclaw_flow import OpenClawFlow
 from mempalace_v2.retrieval.assembler import MemoryAssembler
 from mempalace_v2.retrieval.query import MemoryRetriever
@@ -85,6 +86,20 @@ def cmd_openclaw_pre_response(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2))
 
 
+def cmd_hook_session_end(args: argparse.Namespace) -> None:
+    runner = HookRunner(Path(args.base_dir).resolve())
+    payload = load_payload(args.payload)
+    result = runner.run_session_end(payload)
+    print(json.dumps(result, indent=2))
+
+
+def cmd_hook_pre_response(args: argparse.Namespace) -> None:
+    runner = HookRunner(Path(args.base_dir).resolve())
+    payload = load_payload(args.payload)
+    result = runner.run_pre_response(payload)
+    print(json.dumps(result, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MemPalace v2 for OpenClaw")
     parser.add_argument("--base-dir", default=".", help="Project base directory")
@@ -129,6 +144,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_oc_pre.add_argument("prompt", help="Prompt to prepare context for")
     p_oc_pre.add_argument("--limit", type=int, default=5)
     p_oc_pre.set_defaults(func=cmd_openclaw_pre_response)
+
+    p_hook_end = sub.add_parser("hook-session-end", help="Run session-end hook payload from file or stdin")
+    p_hook_end.add_argument("--payload", default=None, help="Path to JSON payload file. If omitted, read stdin")
+    p_hook_end.set_defaults(func=cmd_hook_session_end)
+
+    p_hook_pre = sub.add_parser("hook-pre-response", help="Run pre-response hook payload from file or stdin")
+    p_hook_pre.add_argument("--payload", default=None, help="Path to JSON payload file. If omitted, read stdin")
+    p_hook_pre.set_defaults(func=cmd_hook_pre_response)
     return parser
 
 

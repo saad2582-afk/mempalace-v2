@@ -1,0 +1,18 @@
+{
+  "session": {
+    "session_id": "hook-sample-001",
+    "timestamp": "2026-04-09T14:00:00Z",
+    "source": "openclaw-hook",
+    "channel": "webchat",
+    "messages": [
+      {
+        "role": "user",
+        "text": "My project is MemPalace v2. Remind me to renew the domain.",
+        "timestamp": "2026-04-09T14:00:00Z"
+      }
+    ],
+    "metadata": {
+      "hook": "session-end"
+    }
+  }
+}
