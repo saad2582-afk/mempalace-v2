@@ -8,6 +8,7 @@ import sqlite3
 from mempalace_v2.consolidation.pipeline import MemoryPipeline
 from mempalace_v2.ingestion.memory_files import ingest_workspace_memory
 from mempalace_v2.ingestion.openclaw_sessions import load_session
+from mempalace_v2.integration.openclaw_flow import OpenClawFlow
 from mempalace_v2.retrieval.assembler import MemoryAssembler
 from mempalace_v2.retrieval.query import MemoryRetriever
 from mempalace_v2.storage import ensure_data_dir
@@ -72,6 +73,18 @@ def cmd_assemble_context(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2))
 
 
+def cmd_openclaw_session_end(args: argparse.Namespace) -> None:
+    flow = OpenClawFlow(Path(args.base_dir).resolve())
+    result = flow.ingest_session_end(args.path)
+    print(json.dumps(result, indent=2))
+
+
+def cmd_openclaw_pre_response(args: argparse.Namespace) -> None:
+    flow = OpenClawFlow(Path(args.base_dir).resolve())
+    result = flow.prepare_pre_response_context(args.prompt, limit=args.limit)
+    print(json.dumps(result, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MemPalace v2 for OpenClaw")
     parser.add_argument("--base-dir", default=".", help="Project base directory")
@@ -107,6 +120,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_assemble.add_argument("prompt", help="Prompt to assemble context for")
     p_assemble.add_argument("--limit", type=int, default=5)
     p_assemble.set_defaults(func=cmd_assemble_context)
+
+    p_oc_end = sub.add_parser("openclaw-session-end", help="OpenClaw-style session-end ingestion")
+    p_oc_end.add_argument("path", help="Path to session file")
+    p_oc_end.set_defaults(func=cmd_openclaw_session_end)
+
+    p_oc_pre = sub.add_parser("openclaw-pre-response", help="OpenClaw-style pre-response context assembly")
+    p_oc_pre.add_argument("prompt", help="Prompt to prepare context for")
+    p_oc_pre.add_argument("--limit", type=int, default=5)
+    p_oc_pre.set_defaults(func=cmd_openclaw_pre_response)
     return parser
 
 

@@ -40,6 +40,15 @@ A sharp memory system needs multiple layers:
 4. Separate memory types
 5. Be auditable and local-first
 
+## Current prototype capabilities
+
+- ingest OpenClaw-style session files
+- consolidate sessions into episodic, semantic, task, profile, and relationship memory
+- persist structured memory in SQLite
+- retrieve memory relevant to a prompt
+- assemble compact memory context for use before a reply
+- simulate OpenClaw session-end and pre-response flows from the CLI
+
 ## Near-term roadmap
 
 1. OpenClaw transcript ingestion
@@ -47,3 +56,4 @@ A sharp memory system needs multiple layers:
 3. Structured semantic/task memory extraction
 4. Fact invalidation and versioning
 5. Retrieval planning and memory assembly
+6. OpenClaw flow integration and hook wiring
