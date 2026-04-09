@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import json
 
 from mempalace_v2.consolidation.extractor import extract_session_memory
 from mempalace_v2.models import SessionRecord
@@ -28,13 +29,17 @@ class MemoryPipeline:
         semantic_written = 0
         invalidations = []
         existing_semantic = self.semantic.read_all()
+        updated_semantic = list(existing_semantic)
         for memory in extracted["semantic"]:
-            invalidation = self._invalidate_conflicts(memory, existing_semantic)
+            invalidation = self._invalidate_conflicts(memory, updated_semantic)
             if invalidation:
                 invalidations.append(invalidation)
                 self.invalidations.append(invalidation)
-            self.semantic.append(memory)
-            semantic_written += 1
+            if not self._is_duplicate(memory, updated_semantic):
+                updated_semantic.append(memory)
+                semantic_written += 1
+
+        self._rewrite_jsonl(self.semantic.path, updated_semantic)
 
         task_written = 0
         for task in extracted["tasks"]:
@@ -53,20 +58,45 @@ class MemoryPipeline:
         }
 
     def _invalidate_conflicts(self, new_memory: dict[str, Any], existing: list[dict[str, Any]]) -> dict[str, Any] | None:
-        if new_memory.get("memory_type") != "preference":
+        memory_type = new_memory.get("memory_type")
+        subject = new_memory.get("subject")
+        predicate = new_memory.get("predicate")
+        value = new_memory.get("value")
+        if not memory_type or not subject or not predicate:
             return None
+
         for old in reversed(existing):
-            if old.get("memory_type") == new_memory.get("memory_type") and old.get("subject") == new_memory.get("subject") and old.get("status") == "active" and old.get("value") != new_memory.get("value"):
-                old["status"] = "superseded"
-                old["valid_to"] = new_memory["timestamp"]
-                return {
-                    "id": stable_id("invalidate", old["id"], new_memory["id"]),
-                    "old_memory_id": old["id"],
-                    "new_memory_id": new_memory["id"],
-                    "reason": "new preference superseded active preference",
-                    "timestamp": now_iso(),
-                }
+            if old.get("memory_type") != memory_type:
+                continue
+            if old.get("subject") != subject or old.get("predicate") != predicate:
+                continue
+            if old.get("status") != "active":
+                continue
+            if old.get("value") == value:
+                return None
+
+            old["status"] = "superseded"
+            old["valid_to"] = new_memory["timestamp"]
+            return {
+                "id": stable_id("invalidate", old["id"], new_memory["id"]),
+                "old_memory_id": old["id"],
+                "new_memory_id": new_memory["id"],
+                "reason": f"new {memory_type} superseded active memory",
+                "timestamp": now_iso(),
+            }
         return None
+
+    def _is_duplicate(self, new_memory: dict[str, Any], existing: list[dict[str, Any]]) -> bool:
+        for old in existing:
+            if old.get("memory_type") == new_memory.get("memory_type") and old.get("subject") == new_memory.get("subject") and old.get("predicate") == new_memory.get("predicate") and old.get("value") == new_memory.get("value") and old.get("status") == "active":
+                return True
+        return False
+
+    def _rewrite_jsonl(self, path: Path, rows: list[dict[str, Any]]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as f:
+            for row in rows:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
     def _update_entities(self, session: SessionRecord) -> None:
         data = self.entities.read()

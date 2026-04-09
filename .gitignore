@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+
+# Generated runtime data
+data/*.jsonl
+data/entities.json
+!data/.gitkeep

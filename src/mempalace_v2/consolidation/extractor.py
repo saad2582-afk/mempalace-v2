@@ -4,12 +4,13 @@ import re
 from typing import Any
 
 from mempalace_v2.models import SessionRecord
-from mempalace_v2.utils import first_sentence, now_iso, stable_id, tokenize_topics
+from mempalace_v2.utils import first_sentence, stable_id, tokenize_topics
 
 PREFERENCE_PATTERNS = [
     re.compile(r"\bI prefer (?P<value>[^.\n]+)", re.IGNORECASE),
     re.compile(r"\bI like (?P<value>[^.\n]+)", re.IGNORECASE),
     re.compile(r"\bI use (?P<value>[^.\n]+)", re.IGNORECASE),
+    re.compile(r"\bI switched to (?P<value>[^.\n]+)", re.IGNORECASE),
 ]
 
 DECISION_PATTERNS = [
@@ -70,7 +71,7 @@ def _extract_preferences(text: str, session: SessionRecord) -> list[dict[str, An
     results = []
     for pattern in PREFERENCE_PATTERNS:
         for match in pattern.finditer(text):
-            value = match.group("value").strip()
+            value = _clean_value(match.group("value"))
             results.append({
                 "id": stable_id("semantic", session.session_id, "preference", value),
                 "memory_type": "preference",
@@ -92,7 +93,7 @@ def _extract_decisions(text: str, session: SessionRecord) -> list[dict[str, Any]
     results = []
     for pattern in DECISION_PATTERNS:
         for match in pattern.finditer(text):
-            value = match.group("value").strip()
+            value = _clean_value(match.group("value"))
             results.append({
                 "id": stable_id("semantic", session.session_id, "decision", value),
                 "memory_type": "decision",
@@ -114,7 +115,7 @@ def _extract_tasks(text: str, session: SessionRecord) -> list[dict[str, Any]]:
     results = []
     for pattern in TASK_PATTERNS:
         for match in pattern.finditer(text):
-            value = match.group("value").strip()
+            value = _clean_value(match.group("value"))
             results.append({
                 "id": stable_id("task", session.session_id, value),
                 "title": value,
@@ -126,3 +127,11 @@ def _extract_tasks(text: str, session: SessionRecord) -> list[dict[str, Any]]:
                 "source_excerpt": first_sentence(text, 180),
             })
     return results
+
+
+def _clean_value(value: str) -> str:
+    value = re.sub(r"\s+", " ", value).strip(" .,!?:;\t")
+    for suffix in [" now", " please", " thanks"]:
+        if value.lower().endswith(suffix):
+            value = value[: -len(suffix)].rstrip()
+    return value
