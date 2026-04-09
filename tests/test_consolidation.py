@@ -3,6 +3,8 @@ import sqlite3
 
 from mempalace_v2.consolidation.pipeline import MemoryPipeline
 from mempalace_v2.ingestion.openclaw_sessions import load_session
+from mempalace_v2.retrieval.assembler import MemoryAssembler
+from mempalace_v2.retrieval.query import MemoryRetriever
 
 
 def test_pipeline_writes_memory(tmp_path):
@@ -83,3 +85,23 @@ def test_profile_and_relationships_written_to_sqlite(tmp_path):
 
     assert profile_count >= 2
     assert relationship_count == 1
+
+
+def test_retrieval_and_context_assembly(tmp_path):
+    sample = tmp_path / "profile.json"
+    sample.write_text(
+        '{"session_id":"s3","timestamp":"2026-04-09T12:00:00Z","source":"test","messages":[{"role":"user","text":"My name is Saad. My project is MemPalace v2. Alice is my friend. I prefer PostgreSQL. Remind me to renew the domain."}]}'
+    )
+
+    pipeline = MemoryPipeline(tmp_path)
+    pipeline.process_session(load_session(sample))
+
+    retriever = MemoryRetriever(tmp_path)
+    retrieved = retriever.retrieve("What do you know about my project and open tasks?", limit=5)
+    assert len(retrieved["profiles"]) >= 1
+    assert len(retrieved["tasks"]) >= 1
+
+    assembler = MemoryAssembler(str(tmp_path))
+    assembled = assembler.assemble("What do you know about my project and open tasks?", limit=5)
+    assert "[profile]" in assembled["context"]
+    assert "[tasks]" in assembled["context"]

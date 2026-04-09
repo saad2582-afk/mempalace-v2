@@ -8,6 +8,8 @@ import sqlite3
 from mempalace_v2.consolidation.pipeline import MemoryPipeline
 from mempalace_v2.ingestion.memory_files import ingest_workspace_memory
 from mempalace_v2.ingestion.openclaw_sessions import load_session
+from mempalace_v2.retrieval.assembler import MemoryAssembler
+from mempalace_v2.retrieval.query import MemoryRetriever
 from mempalace_v2.storage import ensure_data_dir
 
 
@@ -58,6 +60,18 @@ def cmd_sqlite_dump(args: argparse.Namespace) -> None:
     print(json.dumps([dict(row) for row in rows], indent=2))
 
 
+def cmd_retrieve(args: argparse.Namespace) -> None:
+    retriever = MemoryRetriever(Path(args.base_dir).resolve())
+    result = retriever.retrieve(args.prompt, limit=args.limit)
+    print(json.dumps(result, indent=2))
+
+
+def cmd_assemble_context(args: argparse.Namespace) -> None:
+    assembler = MemoryAssembler(str(Path(args.base_dir).resolve()))
+    result = assembler.assemble(args.prompt, limit=args.limit)
+    print(json.dumps(result, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MemPalace v2 for OpenClaw")
     parser.add_argument("--base-dir", default=".", help="Project base directory")
@@ -83,6 +97,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_sqlite.add_argument("table", choices=["semantic_memory", "task_memory", "profile_memory", "relationships"])
     p_sqlite.add_argument("--limit", type=int, default=20)
     p_sqlite.set_defaults(func=cmd_sqlite_dump)
+
+    p_retrieve = sub.add_parser("retrieve", help="Retrieve memory relevant to a prompt")
+    p_retrieve.add_argument("prompt", help="Prompt to retrieve against")
+    p_retrieve.add_argument("--limit", type=int, default=5)
+    p_retrieve.set_defaults(func=cmd_retrieve)
+
+    p_assemble = sub.add_parser("assemble-context", help="Assemble prompt-ready memory context")
+    p_assemble.add_argument("prompt", help="Prompt to assemble context for")
+    p_assemble.add_argument("--limit", type=int, default=5)
+    p_assemble.set_defaults(func=cmd_assemble_context)
     return parser
 
 
