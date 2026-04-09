@@ -30,9 +30,21 @@ def cmd_ingest_memory_files(args: argparse.Namespace) -> None:
 
 
 def cmd_status(args: argparse.Namespace) -> None:
-    data_dir = ensure_data_dir(Path(args.base_dir).resolve())
-    files = sorted(p.name for p in data_dir.glob("*.json*") if p.is_file())
-    print(json.dumps({"data_dir": str(data_dir), "files": files}, indent=2))
+    pipeline = MemoryPipeline(Path(args.base_dir).resolve())
+    files = sorted(p.name for p in pipeline.data_dir.glob("*.json*") if p.is_file())
+    print(json.dumps({
+        "data_dir": str(pipeline.data_dir),
+        "files": files,
+        "summary": pipeline.status_summary(),
+    }, indent=2))
+
+
+def cmd_debug_dump(args: argparse.Namespace) -> None:
+    pipeline = MemoryPipeline(Path(args.base_dir).resolve())
+    rows = pipeline.debug_dump(args.store)
+    if args.limit:
+        rows = rows[: args.limit]
+    print(json.dumps(rows, indent=2))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -48,8 +60,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_memory.add_argument("workspace", help="Workspace directory")
     p_memory.set_defaults(func=cmd_ingest_memory_files)
 
-    p_status = sub.add_parser("status", help="Show current data files")
+    p_status = sub.add_parser("status", help="Show current data files and summary")
     p_status.set_defaults(func=cmd_status)
+
+    p_debug = sub.add_parser("debug-dump", help="Dump one internal store")
+    p_debug.add_argument("store", choices=["raw_sessions", "episodic_memory", "semantic_memory", "task_memory", "invalidations"])
+    p_debug.add_argument("--limit", type=int, default=0)
+    p_debug.set_defaults(func=cmd_debug_dump)
     return parser
 
 
