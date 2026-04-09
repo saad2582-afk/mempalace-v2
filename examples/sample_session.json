@@ -1,0 +1,22 @@
+{
+  "session_id": "sample-openclaw-session-001",
+  "timestamp": "2026-04-09T12:00:00Z",
+  "source": "example",
+  "channel": "webchat",
+  "messages": [
+    {
+      "role": "user",
+      "text": "I prefer PostgreSQL now. We decided to move auth into a separate service. Remind me to renew the domain next week.",
+      "timestamp": "2026-04-09T12:00:00Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Got it. I will treat PostgreSQL as your current preference, note the auth service decision, and keep the domain renewal as an open task.",
+      "timestamp": "2026-04-09T12:00:05Z"
+    }
+  ],
+  "metadata": {
+    "surface": "webchat",
+    "chat_type": "direct"
+  }
+}

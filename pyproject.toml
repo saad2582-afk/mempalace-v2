@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
+[project.scripts]
+mempalace-v2 = "mempalace_v2.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
