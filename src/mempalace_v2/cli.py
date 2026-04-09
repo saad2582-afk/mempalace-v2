@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sqlite3
 
 from mempalace_v2.consolidation.pipeline import MemoryPipeline
 from mempalace_v2.ingestion.memory_files import ingest_workspace_memory
@@ -47,6 +48,16 @@ def cmd_debug_dump(args: argparse.Namespace) -> None:
     print(json.dumps(rows, indent=2))
 
 
+def cmd_sqlite_dump(args: argparse.Namespace) -> None:
+    base_dir = Path(args.base_dir).resolve()
+    db_path = ensure_data_dir(base_dir) / "memory.db"
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(f"SELECT * FROM {args.table} LIMIT ?", (args.limit,)).fetchall()
+    conn.close()
+    print(json.dumps([dict(row) for row in rows], indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="MemPalace v2 for OpenClaw")
     parser.add_argument("--base-dir", default=".", help="Project base directory")
@@ -63,10 +74,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_status = sub.add_parser("status", help="Show current data files and summary")
     p_status.set_defaults(func=cmd_status)
 
-    p_debug = sub.add_parser("debug-dump", help="Dump one internal store")
+    p_debug = sub.add_parser("debug-dump", help="Dump one internal JSONL store")
     p_debug.add_argument("store", choices=["raw_sessions", "episodic_memory", "semantic_memory", "task_memory", "invalidations"])
     p_debug.add_argument("--limit", type=int, default=0)
     p_debug.set_defaults(func=cmd_debug_dump)
+
+    p_sqlite = sub.add_parser("sqlite-dump", help="Dump one SQLite table")
+    p_sqlite.add_argument("table", choices=["semantic_memory", "task_memory", "profile_memory", "relationships"])
+    p_sqlite.add_argument("--limit", type=int, default=20)
+    p_sqlite.set_defaults(func=cmd_sqlite_dump)
     return parser
 
 

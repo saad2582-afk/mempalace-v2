@@ -6,6 +6,7 @@ import json
 
 from mempalace_v2.consolidation.extractor import extract_session_memory
 from mempalace_v2.models import SessionRecord
+from mempalace_v2.sqlite_store import SQLiteMemoryStore
 from mempalace_v2.storage import JsonStore, JsonlStore, ensure_data_dir
 from mempalace_v2.utils import now_iso, stable_id
 
@@ -20,6 +21,7 @@ class MemoryPipeline:
         self.tasks = JsonlStore(self.data_dir / "task_memory.jsonl")
         self.invalidations = JsonlStore(self.data_dir / "invalidation_log.jsonl")
         self.entities = JsonStore(self.data_dir / "entities.json")
+        self.sqlite = SQLiteMemoryStore(self.data_dir / "memory.db")
 
     def process_session(self, session: SessionRecord) -> dict[str, Any]:
         self.raw_sessions.append(session.to_dict())
@@ -40,10 +42,13 @@ class MemoryPipeline:
                 semantic_written += 1
 
         self._rewrite_jsonl(self.semantic.path, updated_semantic)
+        self.sqlite.replace_semantic_memory(updated_semantic)
 
         task_result = self._merge_tasks(extracted["tasks"])
+        profile_written = self.sqlite.upsert_profiles(extracted.get("profile", []))
+        relationship_written = self.sqlite.upsert_relationships(extracted.get("relationships", []))
 
-        self._update_entities(session)
+        self._update_entities(session, extracted)
 
         return {
             "session_id": session.session_id,
@@ -52,6 +57,8 @@ class MemoryPipeline:
             "semantic_written": semantic_written,
             "task_written": task_result["written"],
             "task_updated": task_result["updated"],
+            "profile_written": profile_written,
+            "relationship_written": relationship_written,
             "invalidations": len(invalidations),
         }
 
@@ -112,11 +119,13 @@ class MemoryPipeline:
                 written += 1
 
         self._rewrite_jsonl(self.tasks.path, updated_tasks)
+        self.sqlite.replace_task_memory(updated_tasks)
         return {"written": written, "updated": updated}
 
     def status_summary(self) -> dict[str, Any]:
         semantic_rows = self.semantic.read_all()
         task_rows = self.tasks.read_all()
+        sqlite_counts = self.sqlite.counts()
         return {
             "raw_sessions": len(self.raw_sessions.read_all()),
             "episodic_memory": len(self.episodic.read_all()),
@@ -125,6 +134,7 @@ class MemoryPipeline:
             "task_memory": len(task_rows),
             "open_tasks": sum(1 for row in task_rows if row.get("status") == "open"),
             "invalidations": len(self.invalidations.read_all()),
+            "sqlite": sqlite_counts,
         }
 
     def debug_dump(self, store_name: str) -> list[dict[str, Any]]:
@@ -145,7 +155,7 @@ class MemoryPipeline:
             for row in rows:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
-    def _update_entities(self, session: SessionRecord) -> None:
+    def _update_entities(self, session: SessionRecord, extracted: dict[str, Any]) -> None:
         data = self.entities.read()
         session_count = int(data.get("session_count", 0)) + 1
         data["session_count"] = session_count
@@ -153,4 +163,8 @@ class MemoryPipeline:
             "session_id": session.session_id,
             "timestamp": session.timestamp,
         })
+        if extracted.get("profile"):
+            data.setdefault("profiles", []).extend(extracted["profile"])
+        if extracted.get("relationships"):
+            data.setdefault("relationships", []).extend(extracted["relationships"])
         self.entities.write(data)

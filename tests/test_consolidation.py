@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 from mempalace_v2.consolidation.pipeline import MemoryPipeline
 from mempalace_v2.ingestion.openclaw_sessions import load_session
@@ -18,6 +19,7 @@ def test_pipeline_writes_memory(tmp_path):
     assert result["semantic_written"] >= 1
     assert result["task_written"] == 1
     assert (tmp_path / "data" / "semantic_memory.jsonl").exists()
+    assert (tmp_path / "data" / "memory.db").exists()
 
 
 def test_preference_supersession(tmp_path):
@@ -60,3 +62,24 @@ def test_task_merge_updates_existing_open_task(tmp_path):
     rows = [json.loads(line) for line in task_lines]
     assert len(rows) == 1
     assert result["task_updated"] == 1
+
+
+def test_profile_and_relationships_written_to_sqlite(tmp_path):
+    sample = tmp_path / "profile.json"
+    sample.write_text(
+        '{"session_id":"s3","timestamp":"2026-04-09T12:00:00Z","source":"test","messages":[{"role":"user","text":"My name is Saad. My project is MemPalace v2. Alice is my friend."}]}'
+    )
+
+    pipeline = MemoryPipeline(tmp_path)
+    result = pipeline.process_session(load_session(sample))
+
+    assert result["profile_written"] >= 2
+    assert result["relationship_written"] == 1
+
+    conn = sqlite3.connect(tmp_path / "data" / "memory.db")
+    profile_count = conn.execute("SELECT COUNT(*) FROM profile_memory").fetchone()[0]
+    relationship_count = conn.execute("SELECT COUNT(*) FROM relationships").fetchone()[0]
+    conn.close()
+
+    assert profile_count >= 2
+    assert relationship_count == 1

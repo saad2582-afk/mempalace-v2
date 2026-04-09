@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from mempalace_v2.models import SessionRecord
+from mempalace_v2.models import ProfileMemory, RelationshipMemory, SessionRecord
 from mempalace_v2.utils import first_sentence, stable_id, tokenize_topics
 
 PREFERENCE_PATTERNS = [
@@ -22,6 +22,20 @@ TASK_PATTERNS = [
     re.compile(r"\b(remind me to|todo:|to do:|follow up on) (?P<value>[^.\n]+)", re.IGNORECASE),
 ]
 
+NAME_PATTERNS = [
+    re.compile(r"\bmy name is (?P<value>[A-Z][a-zA-Z]+)", re.IGNORECASE),
+    re.compile(r"\bI am (?P<value>[A-Z][a-zA-Z]+)", re.IGNORECASE),
+]
+
+PROJECT_PATTERNS = [
+    re.compile(r"\bmy project is (?P<value>[^.\n]+)", re.IGNORECASE),
+    re.compile(r"\bwe are building (?P<value>[^.\n]+)", re.IGNORECASE),
+]
+
+RELATIONSHIP_PATTERNS = [
+    re.compile(r"\b(?P<object>[A-Z][a-zA-Z]+) is my (?P<predicate>friend|brother|sister|partner|wife|husband)", re.IGNORECASE),
+]
+
 
 def extract_session_memory(session: SessionRecord) -> dict[str, Any]:
     transcript = "\n".join(f"{m.role}: {m.text}" for m in session.messages if m.text)
@@ -31,6 +45,8 @@ def extract_session_memory(session: SessionRecord) -> dict[str, Any]:
 
     semantic = []
     tasks = []
+    profile = []
+    relationships = []
     events = []
 
     for message in session.messages:
@@ -39,6 +55,8 @@ def extract_session_memory(session: SessionRecord) -> dict[str, Any]:
         semantic.extend(_extract_preferences(message.text, session))
         semantic.extend(_extract_decisions(message.text, session))
         tasks.extend(_extract_tasks(message.text, session))
+        profile.extend(_extract_profile_memory(message.text, session))
+        relationships.extend(_extract_relationships(message.text, session))
 
     if summary:
         events.append(summary)
@@ -56,6 +74,8 @@ def extract_session_memory(session: SessionRecord) -> dict[str, Any]:
         },
         "semantic": semantic,
         "tasks": tasks,
+        "profile": [item.to_dict() for item in profile],
+        "relationships": [item.to_dict() for item in relationships],
     }
 
 
@@ -126,6 +146,56 @@ def _extract_tasks(text: str, session: SessionRecord) -> list[dict[str, Any]]:
                 "source_session": session.session_id,
                 "source_excerpt": first_sentence(text, 180),
             })
+    return results
+
+
+def _extract_profile_memory(text: str, session: SessionRecord) -> list[ProfileMemory]:
+    results: list[ProfileMemory] = []
+    for pattern in NAME_PATTERNS:
+        for match in pattern.finditer(text):
+            value = _clean_value(match.group("value"))
+            results.append(ProfileMemory(
+                id=stable_id("profile", session.session_id, "name", value),
+                profile_type="name",
+                subject="user",
+                value=value,
+                timestamp=session.timestamp,
+                source_session=session.session_id,
+                source_excerpt=first_sentence(text, 180),
+                confidence=0.7,
+            ))
+    for pattern in PROJECT_PATTERNS:
+        for match in pattern.finditer(text):
+            value = _clean_value(match.group("value"))
+            results.append(ProfileMemory(
+                id=stable_id("profile", session.session_id, "project", value),
+                profile_type="project",
+                subject="user",
+                value=value,
+                timestamp=session.timestamp,
+                source_session=session.session_id,
+                source_excerpt=first_sentence(text, 180),
+                confidence=0.65,
+            ))
+    return results
+
+
+def _extract_relationships(text: str, session: SessionRecord) -> list[RelationshipMemory]:
+    results: list[RelationshipMemory] = []
+    for pattern in RELATIONSHIP_PATTERNS:
+        for match in pattern.finditer(text):
+            obj = _clean_value(match.group("object"))
+            predicate = _clean_value(match.group("predicate")).lower()
+            results.append(RelationshipMemory(
+                id=stable_id("relationship", session.session_id, predicate, obj),
+                subject="user",
+                predicate=predicate,
+                object=obj,
+                timestamp=session.timestamp,
+                source_session=session.session_id,
+                source_excerpt=first_sentence(text, 180),
+                confidence=0.6,
+            ))
     return results
 
 
